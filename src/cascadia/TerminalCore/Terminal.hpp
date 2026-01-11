@@ -332,6 +332,9 @@ private:
     // (std::function is like 64 bytes) to create some natural padding without wasting space.
     til::recursive_ticket_lock _readWriteLock;
 
+    // Non-reflow: keep a monotonic max width to avoid losing columns and keep renderer invariants.
+    til::CoordType _nonReflowMaxWidth{ 0 };
+
     std::function<void(const int, const int, const int)> _pfnScrollPositionChanged;
     std::function<void()> _pfnTaskbarProgressChanged;
     std::function<void(bool)> _pfnShowWindowChanged;

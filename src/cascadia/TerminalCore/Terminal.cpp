@@ -298,7 +298,26 @@ try
     }
 
     const auto newBufferHeight = std::clamp(viewportSize.height + _scrollbackLines, 1, SHRT_MAX);
-    const til::size bufferSize{ viewportSize.width, newBufferHeight };
+
+    const bool reflowOnResize = false; // TEMP Create a toggle in the settings later, in addition to a shortcut key.
+
+    // Updates maximum width when there is no backflow.
+    if (!reflowOnResize)
+    {
+        if (_nonReflowMaxWidth == 0)
+        {
+            _nonReflowMaxWidth = oldDimensions.width;
+        }
+        _nonReflowMaxWidth = std::max(_nonReflowMaxWidth, viewportSize.width);
+    }
+    else
+    {
+        // If reflow, optionally reset.
+        _nonReflowMaxWidth = 0;
+    }
+
+    const auto targetWidth = reflowOnResize ? viewportSize.width : _nonReflowMaxWidth;
+    const til::size bufferSize{ targetWidth, newBufferHeight };
 
     // If the original buffer had _no_ scroll offset, then we should be at the
     // bottom in the new buffer as well. Track that case now.
@@ -317,53 +336,58 @@ try
     // Build a PositionInformation to track the position of both the top of
     // the mutable viewport and the top of the visible viewport in the new
     // buffer.
-    // * the new value of mutableViewportTop will be used to figure out
-    //   where we should place the mutable viewport in the new buffer. This
-    //   requires a bit of trickiness to remain consistent with conpty's
-    //   buffer (as seen below).
-    // * the new value of visibleViewportTop will be used to calculate the
-    //   new scrollOffset in the new buffer, so that the visible lines on
-    //   the screen remain roughly the same.
     TextBuffer::PositionInformation positionInfo{
         .mutableViewportTop = _mutableViewport.Top(),
         .visibleViewportTop = _VisibleStartIndex(),
     };
 
-    TextBuffer::Reflow(*_mainBuffer.get(), *newTextBuffer.get(), &_mutableViewport, &positionInfo);
+    // ============================================================
+    // NEW: Toggle for reflow on resize (MVP local)
+    // ============================================================
+    // Save the current attributes BEFORE any swap,
+    // because in non - reflow the _mainBuffer becomes an empty buffer temporarily.
+    const auto oldCurrentAttrs = _mainBuffer->GetCurrentAttributes();
 
-    // Restore the active text attributes
-    newTextBuffer->SetCurrentAttributes(_mainBuffer->GetCurrentAttributes());
+    if (reflowOnResize)
+    {
+        // Original: reflow para dentro do newTextBuffer
+        TextBuffer::Reflow(*_mainBuffer.get(), *newTextBuffer.get(), &_mutableViewport, &positionInfo);
+    }
+    else
+    {
+        // Non-reflow behavior:
+        // We must still end up with newTextBuffer holding the resized content,
+        // because the rest of this method uses newTextBuffer (cursor/last char/etc)
+        // and then swaps it into _mainBuffer at the end.
+        //
+        // There is no "CopyFrom" public API, so we do a controlled temporary swap:
+        // 1) Put the OLD buffer into newTextBuffer
+        // 2) Put the EMPTY buffer into _mainBuffer
+        // 3) ResizeTraditional on the OLD buffer now sitting in newTextBuffer,
+        //    which copies rows into a new internal buffer WITHOUT reflow/rewrap.
+        // 4) Swap back so that:
+        //    - _mainBuffer is still the old buffer (unchanged for now)
+        //    - newTextBuffer contains the correctly resized, non-reflow result
+        _mainBuffer.swap(newTextBuffer);
+        newTextBuffer->ResizeTraditional(bufferSize);
 
-    // Conpty resizes a little oddly - if the height decreased, and there were
-    // blank lines at the bottom, those lines will get trimmed. If there's not
-    // blank lines, then the top will get "shifted down", moving the top line
-    // into scrollback. See GH#3490 for more details.
-    //
-    // If the final position in the buffer is on the bottom row of the new
-    // viewport, then we're going to need to move the top down. Otherwise, move
-    // the bottom up.
-    //
-    // There are also important things to consider with line wrapping.
-    // * If a line in scrollback wrapped that didn't previously, we'll need to
-    //   make sure to have the new viewport down another line. This will cause
-    //   our top to move down.
-    // * If a line _in the viewport_ wrapped that didn't previously, then the
-    //   conpty buffer will also have that wrapped line, and will move the
-    //   cursor & text down a line in response. This causes our bottom to move
-    //   down.
-    //
-    // We're going to use a combo of both these things to calculate where the
-    // new viewport should be. To keep in sync with conpty, we'll need to make
-    // sure that any lines that entered the scrollback _stay in scrollback_. We
-    // do that by taking the max of
-    // * Where the old top line in the viewport exists in the new buffer (as
-    //   calculated by TextBuffer::Reflow)
-    // * Where the bottom of the text in the new buffer is (and using that to
-    //   calculate another proposed top location).
+        // Clamp info (security)
+        positionInfo.mutableViewportTop = std::min(positionInfo.mutableViewportTop, bufferSize.height - 1);
+        positionInfo.visibleViewportTop = std::min(positionInfo.visibleViewportTop, bufferSize.height - 1);
+
+    }
+
+    // Restore the active text attributes no buffer que VAI virar o main.
+    newTextBuffer->SetCurrentAttributes(oldCurrentAttrs);
+
+    // --------------------------------------------------------------------
+    // The rest of the method remains ORIGINAL and continues to use
+    // newTextBuffer + positionInfo to compute viewport + scroll offset.
+    // --------------------------------------------------------------------
 
     const auto newCursorPos = newTextBuffer->GetCursor().GetPosition();
 #pragma warning(push)
-#pragma warning(disable : 26496) // cpp core checks wants this const, but it's assigned immediately below...
+#pragma warning(disable : 26496)
     auto newLastChar = newCursorPos;
     try
     {
@@ -380,19 +404,6 @@ try
     auto proposedTop = std::max(proposedTopFromLastLine,
                                 proposedTopFromScrollback);
 
-    // If we're using the new location of the old top line to place the
-    // viewport, we might need to make an adjustment to it.
-    //
-    // We're using the last cell of the line to calculate where the top line is
-    // in the new buffer. If that line wrapped, then all the lines below it
-    // shifted down in the buffer. If there's space for all those lines in the
-    // conpty buffer, then the originally unwrapped top line will _still_ be in
-    // the buffer. In that case, don't stick to the _end_ of the old top line,
-    // instead stick to the _start_, which is one line up.
-    //
-    // We can know if there's space in the conpty buffer by checking if the
-    // maxRow (the highest row we've written text to) is above the viewport from
-    // this proposed top position.
     if (proposedTop == proposedTopFromScrollback)
     {
         const auto proposedViewFromTop = Viewport::FromDimensions({ 0, proposedTopFromScrollback }, viewportSize);
@@ -409,21 +420,14 @@ try
         }
     }
 
-    // If the new bottom would be higher than the last row of text, then we
-    // definitely want to use the last row of text to determine where the
-    // viewport should be.
     const auto proposedViewFromTop = Viewport::FromDimensions({ 0, proposedTopFromScrollback }, viewportSize);
     if (maxRow > proposedViewFromTop.BottomInclusive())
     {
         proposedTop = proposedTopFromLastLine;
     }
 
-    // Make sure the proposed viewport is within the bounds of the buffer.
-    // First make sure the top is >=0
     proposedTop = std::max(0, proposedTop);
 
-    // If the new bottom would be below the bottom of the buffer, then slide the
-    // top up so that we'll still fit within the buffer.
     const auto newView = Viewport::FromDimensions({ 0, proposedTop }, viewportSize);
     const auto proposedBottom = newView.BottomExclusive();
     if (proposedBottom > bufferSize.height)
@@ -431,7 +435,6 @@ try
         proposedTop = ::base::ClampSub(proposedTop, ::base::ClampSub(proposedBottom, bufferSize.height));
     }
 
-    // Keep the cursor in the mutable viewport
     proposedTop = std::min(proposedTop, newCursorPos.y);
 
     _mutableViewport = Viewport::FromDimensions({ 0, proposedTop }, viewportSize);
@@ -439,13 +442,9 @@ try
     _mainBuffer.swap(newTextBuffer);
 
     // GH#3494: Maintain scrollbar position during resize
-    // Make sure that we don't scroll past the mutableViewport at the bottom of the buffer
     auto newVisibleTop = std::min(positionInfo.visibleViewportTop, _mutableViewport.Top());
-    // Make sure we don't scroll past the top of the scrollback
     newVisibleTop = std::max(newVisibleTop, 0);
 
-    // If the old scrolloffset was 0, then we weren't scrolled back at all
-    // before, and shouldn't be now either.
     _scrollOffset = originalOffsetWasZero ? 0 : static_cast<int>(::base::ClampSub(_mutableViewport.Top(), newVisibleTop));
 
     _mainBuffer->TriggerRedrawAll();
