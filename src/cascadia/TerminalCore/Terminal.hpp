@@ -295,6 +295,9 @@ public:
         std::string rtf;
     };
 
+    void UserScrollViewportHorizontalDelta(const int delta);
+    void _ClampScrollOffsetsUnderLock() noexcept;
+
     void MultiClickSelection(const til::point viewportPos, SelectionExpansion expansionMode);
     void SetSelectionAnchor(const til::point position);
     void SetSelectionEnd(const til::point position, std::optional<SelectionExpansion> newExpansionMode = std::nullopt);
@@ -372,6 +375,14 @@ private:
     bool _trimBlockSelection = true;
     bool _autoMarkPrompts = false;
     bool _rainbowSuggestions = false;
+
+    int _scrollOffsetX{ 0 };
+
+    int _GetMaxHorizontalScrollOffset() const noexcept;
+
+    void UserScrollViewportHorizontal(const int viewLeft);
+    int ViewStartIndexX() const noexcept;
+    int GetScrollOffsetX() const noexcept;
 
     bool _reflowOnResize = true;
 

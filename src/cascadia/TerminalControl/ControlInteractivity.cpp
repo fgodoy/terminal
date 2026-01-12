@@ -524,7 +524,35 @@ namespace winrt::Microsoft::Terminal::Control::implementation
         }
         else
         {
-            _mouseScrollHandler(delta.Y, pixelPosition, WI_IsFlagSet(buttonState, MouseButtonState::IsLeftButtonDown));
+            // SHIFT + wheel => horizontal scroll (only makes sense in non-reflow mode)
+            if (shiftPressed && !ctrlPressed && !_core->ReflowOnResize())
+            {
+                // Prefer vertical wheel delta; fall back to horizontal wheel if provided
+                const auto wheelDelta = delta.Y != 0 ? delta.Y : delta.X;
+
+                // Normalize wheel delta to "notches" (120 per notch), same sign convention as vertical handler.
+                const auto notches = wheelDelta / (-1.0f * WHEEL_DELTA);
+
+                // MVP: 8 columns per notch. Tune as you like.
+                constexpr auto colsPerNotch = 8.0f;
+
+                const auto deltaCols = static_cast<int>(std::lround(notches * colsPerNotch));
+
+                if (deltaCols != 0)
+                {
+                    _core->UserScrollViewportHorizontalDelta(deltaCols);
+
+                    // If user is mouse selecting and scrolls horizontally, update selection end too
+                    if (WI_IsFlagSet(buttonState, MouseButtonState::IsLeftButtonDown))
+                    {
+                        SetEndSelectionPoint(pixelPosition);
+                    }
+                }
+            }
+            else
+            {
+                _mouseScrollHandler(delta.Y, pixelPosition, WI_IsFlagSet(buttonState, MouseButtonState::IsLeftButtonDown));
+            }
         }
         return false;
     }

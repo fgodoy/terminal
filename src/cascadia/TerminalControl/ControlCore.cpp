@@ -2937,4 +2937,10 @@ namespace winrt::Microsoft::Terminal::Control::implementation
     {
         _terminal->PreviewText(input);
     }
+
+    void ControlCore::UserScrollViewportHorizontalDelta(const int delta)
+    {
+        const auto lock = _terminal->LockForWriting();
+        _terminal->UserScrollViewportHorizontalDelta(delta);
+    }
 }

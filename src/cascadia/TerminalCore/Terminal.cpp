@@ -244,7 +244,14 @@ void Terminal::SetReflowOnResize(bool value) noexcept
     if (_reflowOnResize)
     {
         _nonReflowMaxWidth = 0;
+        _scrollOffsetX = 0;
     }
+}
+
+void Terminal::_ClampScrollOffsetsUnderLock() noexcept
+{
+    _assertLocked();
+    _scrollOffsetX = std::clamp(_scrollOffsetX, 0, _GetMaxHorizontalScrollOffset());
 }
 
 void Terminal::SetCursorStyle(const DispatchTypes::CursorStyle cursorStyle)
@@ -310,22 +317,13 @@ try
 
     const bool reflowOnResize = _reflowOnResize;
 
-    // Updates maximum width when there is no backflow.
-    if (!reflowOnResize)
-    {
-        if (_nonReflowMaxWidth == 0)
-        {
-            _nonReflowMaxWidth = oldDimensions.width;
-        }
-        _nonReflowMaxWidth = std::max(_nonReflowMaxWidth, viewportSize.width);
-    }
-    else
-    {
-        // If reflow, optionally reset.
-        _nonReflowMaxWidth = 0;
-    }
+    const auto maxNonReflowCols = std::max<til::CoordType>(1, 2000);
 
-    const auto targetWidth = reflowOnResize ? viewportSize.width : _nonReflowMaxWidth;
+    const auto targetWidth =
+        reflowOnResize ? viewportSize.width : std::max(viewportSize.width, maxNonReflowCols);
+
+    _nonReflowMaxWidth = reflowOnResize ? 0 : targetWidth;
+
     const til::size bufferSize{ targetWidth, newBufferHeight };
 
     // If the original buffer had _no_ scroll offset, then we should be at the
@@ -378,6 +376,17 @@ try
         //    - _mainBuffer is still the old buffer (unchanged for now)
         //    - newTextBuffer contains the correctly resized, non-reflow result
         _mainBuffer.swap(newTextBuffer);
+
+        if (!_reflowOnResize && !_inAltBuffer())
+        {
+            const auto maxX = _GetMaxHorizontalScrollOffset();
+            _scrollOffsetX = std::clamp(_scrollOffsetX, 0, maxX);
+        }
+        else
+        {
+            _scrollOffsetX = 0;
+        }
+
         newTextBuffer->ResizeTraditional(bufferSize);
 
         // Clamp info (security)
@@ -450,6 +459,16 @@ try
 
     _mainBuffer.swap(newTextBuffer);
 
+    if (!_reflowOnResize && !_inAltBuffer())
+    {
+        const auto maxX = _GetMaxHorizontalScrollOffset();
+        _scrollOffsetX = std::clamp(_scrollOffsetX, 0, maxX);
+    }
+    else
+    {
+        _scrollOffsetX = 0;
+    }
+
     // GH#3494: Maintain scrollbar position during resize
     auto newVisibleTop = std::min(positionInfo.visibleViewportTop, _mutableViewport.Top());
     newVisibleTop = std::max(newVisibleTop, 0);
@@ -458,6 +477,9 @@ try
 
     _mainBuffer->TriggerRedrawAll();
     _NotifyScrollEvent();
+
+    _ClampScrollOffsetsUnderLock();
+
     return S_OK;
 }
 CATCH_RETURN()
@@ -1082,16 +1104,85 @@ int Terminal::_VisibleEndIndex() const noexcept
     return _inAltBuffer() ? _altBufferSize.height - 1 : std::max(0, _mutableViewport.BottomInclusive() - _scrollOffset);
 }
 
+//Viewport Terminal::_GetVisibleViewport() const noexcept
+//{
+//    // GH#3493: if we're in the alt buffer, then it's possible that the mutable
+//    // viewport's size hasn't been updated yet. In that case, use the
+//    // temporarily stashed _altBufferSize instead.
+//    const til::point origin{ 0, _VisibleStartIndex() };
+//    const auto size{ _inAltBuffer() ? _altBufferSize :
+//                                      _mutableViewport.Dimensions() };
+//    return Viewport::FromDimensions(origin,
+//                                    size);
+//}
 Viewport Terminal::_GetVisibleViewport() const noexcept
 {
-    // GH#3493: if we're in the alt buffer, then it's possible that the mutable
-    // viewport's size hasn't been updated yet. In that case, use the
-    // temporarily stashed _altBufferSize instead.
-    const til::point origin{ 0, _VisibleStartIndex() };
-    const auto size{ _inAltBuffer() ? _altBufferSize :
-                                      _mutableViewport.Dimensions() };
-    return Viewport::FromDimensions(origin,
-                                    size);
+    // If we're in the alt buffer, size may be stale; keep existing behavior.
+    const auto size{ _inAltBuffer() ? _altBufferSize : _mutableViewport.Dimensions() };
+
+    // Horizontal scrolling only makes sense for the main buffer (non-alt).
+    // We'll still honor it here, but clamp for safety.
+    const auto x = _inAltBuffer() ? 0 : std::max(0, _scrollOffsetX);
+
+    const til::point origin{ x, _VisibleStartIndex() };
+    return Viewport::FromDimensions(origin, size);
+}
+
+int Terminal::_GetMaxHorizontalScrollOffset() const noexcept
+{
+    if (_inAltBuffer())
+    {
+        return 0;
+    }
+
+    // buffer width is the actual stored width (in non-reflow it can be large)
+    const auto bufferWidth = _activeBuffer().GetSize().Width();
+    const auto viewWidth = _GetMutableViewport().Width();
+
+    const auto max = bufferWidth - viewWidth;
+    return max > 0 ? max : 0;
+}
+
+int Terminal::ViewStartIndexX() const noexcept
+{
+    return _inAltBuffer() ? 0 : std::max(0, _scrollOffsetX);
+}
+
+int Terminal::GetScrollOffsetX() const noexcept
+{
+    return ViewStartIndexX();
+}
+
+void Terminal::UserScrollViewportHorizontal(const int viewLeft)
+{
+    _clearPatternTree();
+
+    if (_inAltBuffer())
+    {
+        return;
+    }
+
+    const auto maxX = _GetMaxHorizontalScrollOffset();
+    const auto clamped = std::clamp(viewLeft, 0, maxX);
+
+    if (clamped == _scrollOffsetX)
+    {
+        return;
+    }
+
+    _scrollOffsetX = clamped;
+
+    // Horizontal scroll changes what's visible, so invalidate patterns and redraw.
+    _activeBuffer().TriggerRedrawAll();
+
+    // If you later create a horizontal scrollbar callback, notify here.
+    // For now, vertical scrollbar stays unchanged:
+    _NotifyScrollEvent();
+}
+
+void Terminal::UserScrollViewportHorizontalDelta(const int delta)
+{
+    UserScrollViewportHorizontal(_scrollOffsetX + delta);
 }
 
 void Terminal::_PreserveUserScrollOffset(const int viewportDelta) noexcept
