@@ -367,6 +367,7 @@ namespace winrt::Microsoft::Terminal::Settings
 
         _WordDelimiters = globalSettings.WordDelimiters();
         _CopyOnSelect = globalSettings.CopyOnSelect();
+        _ReflowOnResize = globalSettings.ReflowOnResize();
         _CopyFormatting = globalSettings.CopyFormatting();
         _FocusFollowMouse = globalSettings.FocusFollowMouse();
         _ScrollToZoom = globalSettings.ScrollToZoom();

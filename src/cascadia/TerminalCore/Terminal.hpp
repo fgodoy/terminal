@@ -90,6 +90,8 @@ public:
                             Microsoft::Console::Render::Renderer& renderer);
 
     void UpdateSettings(winrt::Microsoft::Terminal::Core::ICoreSettings settings);
+    void SetReflowOnResize(bool value) noexcept;
+
     void UpdateAppearance(const winrt::Microsoft::Terminal::Core::ICoreAppearance& appearance);
     void UpdateColorScheme(const winrt::Microsoft::Terminal::Core::ICoreScheme& scheme);
     void SetHighContrastMode(bool hc) noexcept;
@@ -370,6 +372,8 @@ private:
     bool _trimBlockSelection = true;
     bool _autoMarkPrompts = false;
     bool _rainbowSuggestions = false;
+
+    bool _reflowOnResize = true;
 
     size_t _taskbarState = 0;
     size_t _taskbarProgress = 0;

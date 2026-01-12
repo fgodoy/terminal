@@ -53,6 +53,8 @@ namespace Microsoft.Terminal.Control
         String CellHeight { get; };
 
         Boolean CopyOnSelect { get; };
+        Boolean ReflowOnResize { get; };
+
         Microsoft.Terminal.Control.CopyFormat CopyFormatting { get; };
         Boolean FocusFollowMouse { get; };
         Boolean ScrollToZoom { get; };
@@ -75,6 +77,7 @@ namespace Microsoft.Terminal.Control
         Boolean RepositionCursorWithMouse { get; };
 
         PathTranslationStyle PathTranslationStyle { get; };
+
 
         // NOTE! When adding something here, make sure to update ControlProperties.h too!
     };

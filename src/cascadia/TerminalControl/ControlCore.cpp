@@ -917,6 +917,7 @@ namespace winrt::Microsoft::Terminal::Control::implementation
 
         // Update the terminal core with its new Core settings
         _terminal->UpdateSettings(_settings);
+        _terminal->SetReflowOnResize(_settings.ReflowOnResize());
 
         if (!_initializedTerminal.load(std::memory_order_relaxed))
         {
@@ -1711,6 +1712,11 @@ namespace winrt::Microsoft::Terminal::Control::implementation
     bool ControlCore::CopyOnSelect() const
     {
         return _settings.CopyOnSelect();
+    }
+
+    bool ControlCore::ReflowOnResize() const
+    {
+        return _settings.ReflowOnResize();
     }
 
     winrt::hstring ControlCore::SelectedText(bool trimTrailingWhitespace) const
