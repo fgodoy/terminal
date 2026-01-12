@@ -238,6 +238,15 @@ void Terminal::SetHighContrastMode(bool hc) noexcept
     _highContrastMode = hc;
 }
 
+void Terminal::SetReflowOnResize(bool value) noexcept
+{
+    _reflowOnResize = value;
+    if (_reflowOnResize)
+    {
+        _nonReflowMaxWidth = 0;
+    }
+}
+
 void Terminal::SetCursorStyle(const DispatchTypes::CursorStyle cursorStyle)
 {
     auto& engine = reinterpret_cast<OutputStateMachineEngine&>(_stateMachine->Engine());
@@ -299,7 +308,7 @@ try
 
     const auto newBufferHeight = std::clamp(viewportSize.height + _scrollbackLines, 1, SHRT_MAX);
 
-    const bool reflowOnResize = false; // TEMP Create a toggle in the settings later, in addition to a shortcut key.
+    const bool reflowOnResize = _reflowOnResize;
 
     // Updates maximum width when there is no backflow.
     if (!reflowOnResize)

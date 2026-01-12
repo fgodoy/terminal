@@ -41,6 +41,7 @@
     X(winrt::hstring, AnswerbackMessage)                                                                          \
     X(winrt::hstring, WordDelimiters, DEFAULT_WORD_DELIMITERS)                                                    \
     X(bool, CopyOnSelect, false)                                                                                  \
+    X(bool, ReflowOnResize, true)                                                                                 \
     X(bool, FocusFollowMouse, false)                                                                              \
     X(bool, ScrollToZoom, true)                                                                                   \
     X(bool, ScrollToChangeOpacity, true)                                                                          \

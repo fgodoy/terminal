@@ -221,6 +221,7 @@ namespace winrt::Microsoft::Terminal::Control::implementation
         void ForceCursorVisible(bool force);
 
         bool CopyOnSelect() const;
+        bool ReflowOnResize() const;
         Control::SelectionData SelectionInfo() const;
         void SetSelectionAnchor(const til::point position);
         void SetEndSelectionPoint(const til::point position);

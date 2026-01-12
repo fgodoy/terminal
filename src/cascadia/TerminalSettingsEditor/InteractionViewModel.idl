@@ -18,6 +18,7 @@ namespace Microsoft.Terminal.Settings.Editor
         Windows.Foundation.Collections.IObservableVector<Microsoft.Terminal.Settings.Editor.EnumEntry> CopyFormatList { get; };
 
         PERMANENT_OBSERVABLE_PROJECTED_SETTING(Boolean, CopyOnSelect);
+        PERMANENT_OBSERVABLE_PROJECTED_SETTING(Boolean, ReflowOnResize);
         PERMANENT_OBSERVABLE_PROJECTED_SETTING(Boolean, TrimBlockSelection);
         PERMANENT_OBSERVABLE_PROJECTED_SETTING(Boolean, TrimPaste);
         PERMANENT_OBSERVABLE_PROJECTED_SETTING(Boolean, SnapToGridOnResize);
