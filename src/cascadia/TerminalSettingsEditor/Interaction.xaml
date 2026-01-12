@@ -32,6 +32,12 @@
                               Style="{StaticResource ToggleSwitchInExpanderStyle}" />
             </local:SettingContainer>
 
+            <!--  Reflow On Resize  -->
+            <local:SettingContainer x:Uid="Globals_ReflowOnResize">
+                <ToggleSwitch IsOn="{x:Bind ViewModel.ReflowOnResize, Mode=TwoWay}"
+                              Style="{StaticResource ToggleSwitchInExpanderStyle}" />
+            </local:SettingContainer>
+            
             <!--  Copy Format  -->
             <local:SettingContainer x:Uid="Globals_CopyFormat">
                 <ComboBox AutomationProperties.AccessibilityView="Content"
