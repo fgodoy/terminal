@@ -118,6 +118,9 @@ namespace winrt::Microsoft::Terminal::Control::implementation
         auto pfnScrollPositionChanged = [this](auto&& PH1, auto&& PH2, auto&& PH3) { _terminalScrollPositionChanged(std::forward<decltype(PH1)>(PH1), std::forward<decltype(PH2)>(PH2), std::forward<decltype(PH3)>(PH3)); };
         _terminal->SetScrollPositionChangedCallback(pfnScrollPositionChanged);
 
+        auto pfnScrollPositionChangedHorizontal = [this](auto&& PH1, auto&& PH2, auto&& PH3) { _terminalScrollPositionChangedHorizontal(std::forward<decltype(PH1)>(PH1), std::forward<decltype(PH2)>(PH2), std::forward<decltype(PH3)>(PH3)); };
+        _terminal->SetScrollPositionChangedCallbackHorizontal(pfnScrollPositionChangedHorizontal);
+
         auto pfnTerminalTaskbarProgressChanged = [this] { _terminalTaskbarProgressChanged(); };
         _terminal->TaskbarProgressChangedCallback(pfnTerminalTaskbarProgressChanged);
 
@@ -241,6 +244,19 @@ namespace winrt::Microsoft::Terminal::Control::implementation
                     core->ScrollPositionChanged.raise(*core, update);
                 }
             });
+
+        shared->updateScrollBarHorizontal = std::make_shared<ThrottledFunc<Control::ScrollPositionChangedArgsHorizontal>>(
+            _dispatcher,
+            til::throttled_func_options{
+                .delay = std::chrono::milliseconds{ 8 },
+                .trailing = true,
+            },
+            [weakThis = get_weak()](const auto& update) {
+                if (auto core{ weakThis.get() }; core && !core->_IsClosing())
+                {
+                    core->ScrollPositionChangedHorizontal.raise(*core, update);
+                }
+            });
     }
 
     // Safely disconnects event handlers from the connection and closes it. This is necessary because
@@ -279,6 +295,7 @@ namespace winrt::Microsoft::Terminal::Control::implementation
         const auto shared = _shared.lock();
         shared->outputIdle.reset();
         shared->updateScrollBar.reset();
+        shared->updateScrollBarHorizontal.reset();
     }
 
     void ControlCore::AttachToNewControl()
@@ -420,6 +437,7 @@ namespace winrt::Microsoft::Terminal::Control::implementation
             // TODO:MSFT:20642297 - Support infinite scrollback here, if HistorySize is -1
             _terminal->Create(viewportSize, Utils::ClampToShortMax(_settings.HistorySize(), 0), *_renderer);
             _terminal->UpdateSettings(_settings);
+            _terminal->SetReflowOnResize(_settings.ReflowOnResize());
 
             // Tell the render engine to notify us when the swap chain changes.
             // We do this after we initially set the swapchain so as to avoid
@@ -732,6 +750,20 @@ namespace winrt::Microsoft::Terminal::Control::implementation
             //      itself - it was initiated by the mouse wheel, or the scrollbar.
             const auto lock = _terminal->LockForWriting();
             _terminal->UserScrollViewport(viewTop);
+        }
+
+        const auto shared = _shared.lock_shared();
+        if (shared->outputIdle)
+        {
+            (*shared->outputIdle)();
+        }
+    }
+
+    void ControlCore::UserScrollViewportHorizontal(const int viewLeft)
+    {
+        {
+            const auto lock = _terminal->LockForWriting();
+            _terminal->UserScrollViewportHorizontal(viewLeft);
         }
 
         const auto shared = _shared.lock_shared();
@@ -1639,6 +1671,33 @@ namespace winrt::Microsoft::Terminal::Control::implementation
             if (shared->updateScrollBar)
             {
                 shared->updateScrollBar->Run(update);
+            }
+        }
+    }
+
+    void ControlCore::_terminalScrollPositionChangedHorizontal(const int viewLeft,
+                                                               const int viewWidth,
+                                                               const int bufferWidth)
+    {
+        if (!_initializedTerminal.load(std::memory_order_relaxed))
+        {
+            return;
+        }
+
+        auto update{ winrt::make<ScrollPositionChangedArgsHorizontal>(viewLeft,
+                                                                       viewWidth,
+                                                                       bufferWidth) };
+
+        if (_inUnitTests) [[unlikely]]
+        {
+            ScrollPositionChangedHorizontal.raise(*this, update);
+        }
+        else
+        {
+            const auto shared = _shared.lock_shared();
+            if (shared->updateScrollBarHorizontal)
+            {
+                shared->updateScrollBarHorizontal->Run(update);
             }
         }
     }

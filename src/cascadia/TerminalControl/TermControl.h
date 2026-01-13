@@ -298,8 +298,10 @@ namespace winrt::Microsoft::Terminal::Control::implementation
         };
 
         std::shared_ptr<ThrottledFunc<ScrollBarUpdate>> _updateScrollBar;
+        std::shared_ptr<ThrottledFunc<ScrollBarUpdate>> _updateHorizontalScrollBar;
 
         bool _isInternalScrollBarUpdate;
+        bool _isInternalHorizontalScrollBarUpdate;
 
         // Auto scroll occurs when user, while selecting, drags cursor outside
         // viewport. View is then scrolled to 'follow' the cursor.
@@ -372,6 +374,7 @@ namespace winrt::Microsoft::Terminal::Control::implementation
         void _PointerExitedHandler(const Windows::Foundation::IInspectable& sender, const Windows::UI::Xaml::Input::PointerRoutedEventArgs& e);
         void _MouseWheelHandler(const Windows::Foundation::IInspectable& sender, const Windows::UI::Xaml::Input::PointerRoutedEventArgs& e);
         void _ScrollbarChangeHandler(const Windows::Foundation::IInspectable& sender, const Windows::UI::Xaml::Controls::Primitives::RangeBaseValueChangedEventArgs& e);
+        void _HorizontalScrollbarChangeHandler(const Windows::Foundation::IInspectable& sender, const Windows::UI::Xaml::Controls::Primitives::RangeBaseValueChangedEventArgs& e);
 
         void _QuickFixButton_PointerEntered(const Windows::Foundation::IInspectable& sender, const Windows::UI::Xaml::Input::PointerRoutedEventArgs& e);
         void _QuickFixButton_PointerExited(const Windows::Foundation::IInspectable& sender, const Windows::UI::Xaml::Input::PointerRoutedEventArgs& e);
@@ -392,6 +395,7 @@ namespace winrt::Microsoft::Terminal::Control::implementation
         void _SwapChainScaleChanged(const Windows::UI::Xaml::Controls::SwapChainPanel& sender, const Windows::Foundation::IInspectable& args);
 
         void _ScrollPositionChanged(const IInspectable& sender, const Control::ScrollPositionChangedArgs& args);
+        void _ScrollPositionChangedHorizontal(const IInspectable& sender, const Control::ScrollPositionChangedArgsHorizontal& args);
 
         bool _CapturePointer(const Windows::Foundation::IInspectable& sender, const Windows::UI::Xaml::Input::PointerRoutedEventArgs& e);
         bool _ReleasePointerCapture(const Windows::Foundation::IInspectable& sender, const Windows::UI::Xaml::Input::PointerRoutedEventArgs& e);
@@ -429,6 +433,7 @@ namespace winrt::Microsoft::Terminal::Control::implementation
 
         winrt::Windows::Foundation::Point _toPosInDips(const Core::Point terminalCellPos);
         void _throttledUpdateScrollbar(const ScrollBarUpdate& update);
+        void _throttledUpdateHorizontalScrollbar(const ScrollBarUpdate& update);
 
         void _pasteTextWithBroadcast(const winrt::hstring& text);
 
@@ -449,6 +454,7 @@ namespace winrt::Microsoft::Terminal::Control::implementation
         struct Revokers
         {
             Control::ControlCore::ScrollPositionChanged_revoker coreScrollPositionChanged;
+            Control::ControlCore::ScrollPositionChangedHorizontal_revoker coreScrollPositionChangedHorizontal;
             Control::ControlCore::WarningBell_revoker WarningBell;
             Control::ControlCore::RendererEnteredErrorState_revoker RendererEnteredErrorState;
             Control::ControlCore::BackgroundColorChanged_revoker BackgroundColorChanged;

@@ -227,6 +227,7 @@ public:
     void SetTitleChangedCallback(std::function<void(std::wstring_view)> pfn) noexcept;
     void SetCopyToClipboardCallback(std::function<void(wil::zwstring_view)> pfn) noexcept;
     void SetScrollPositionChangedCallback(std::function<void(const int, const int, const int)> pfn) noexcept;
+    void SetScrollPositionChangedCallbackHorizontal(std::function<void(const int, const int, const int)> pfn) noexcept;
     void TaskbarProgressChangedCallback(std::function<void()> pfn) noexcept;
     void SetShowWindowCallback(std::function<void(bool)> pfn) noexcept;
     void SetPlayMidiNoteCallback(std::function<void(const int, const int, const std::chrono::microseconds)> pfn) noexcept;
@@ -295,6 +296,7 @@ public:
         std::string rtf;
     };
 
+    void UserScrollViewportHorizontal(const int viewLeft);
     void UserScrollViewportHorizontalDelta(const int delta);
     void _ClampScrollOffsetsUnderLock() noexcept;
 
@@ -341,6 +343,7 @@ private:
     til::CoordType _nonReflowMaxWidth{ 0 };
 
     std::function<void(const int, const int, const int)> _pfnScrollPositionChanged;
+    std::function<void(const int, const int, const int)> _pfnScrollPositionChangedX;
     std::function<void()> _pfnTaskbarProgressChanged;
     std::function<void(bool)> _pfnShowWindowChanged;
     std::function<void(const int, const int, const std::chrono::microseconds)> _pfnPlayMidiNote;
@@ -380,7 +383,6 @@ private:
 
     int _GetMaxHorizontalScrollOffset() const noexcept;
 
-    void UserScrollViewportHorizontal(const int viewLeft);
     int ViewStartIndexX() const noexcept;
     int GetScrollOffsetX() const noexcept;
 
@@ -480,6 +482,7 @@ private:
     til::CoordType _ScrollToPoints(const til::point coordStart, const til::point coordEnd);
 
     void _NotifyScrollEvent();
+    void _NotifyScrollEventX();
     bool _inAltBuffer() const noexcept;
     TextBuffer& _activeBuffer() const noexcept;
     void _updateUrlDetection();
