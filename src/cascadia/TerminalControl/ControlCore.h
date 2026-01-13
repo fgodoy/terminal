@@ -209,6 +209,7 @@ namespace winrt::Microsoft::Terminal::Control::implementation
                             const short wheelDelta,
                             const ::Microsoft::Console::VirtualTerminal::TerminalInput::MouseButtonState state);
         void UserScrollViewport(const int viewTop);
+        void UserScrollViewportHorizontal(const int viewLeft);
 
         void ClearBuffer(Control::ClearBufferType clearType);
 
@@ -282,6 +283,7 @@ namespace winrt::Microsoft::Terminal::Control::implementation
         til::typed_event<> TabColorChanged;
         til::typed_event<> BackgroundColorChanged;
         til::typed_event<IInspectable, Control::ScrollPositionChangedArgs> ScrollPositionChanged;
+        til::typed_event<IInspectable, Control::ScrollPositionChangedArgsHorizontal> ScrollPositionChangedHorizontal;
         til::typed_event<> TaskbarProgressChanged;
         til::typed_event<> ConnectionStateChanged;
         til::typed_event<> HoveredHyperlinkChanged;
@@ -311,6 +313,7 @@ namespace winrt::Microsoft::Terminal::Control::implementation
             std::unique_ptr<til::throttled_func<>> outputIdle;
             std::unique_ptr<til::throttled_func<bool>> focusChanged;
             std::shared_ptr<ThrottledFunc<Control::ScrollPositionChangedArgs>> updateScrollBar;
+            std::shared_ptr<ThrottledFunc<Control::ScrollPositionChangedArgsHorizontal>> updateScrollBarHorizontal;
         };
 
         void _setupDispatcherAndCallbacks();
@@ -331,6 +334,9 @@ namespace winrt::Microsoft::Terminal::Control::implementation
         void _terminalScrollPositionChanged(const int viewTop,
                                             const int viewHeight,
                                             const int bufferSize);
+        void _terminalScrollPositionChangedHorizontal(const int viewLeft,
+                                                      const int viewWidth,
+                                                      const int bufferWidth);
         void _terminalTaskbarProgressChanged();
         void _terminalShowWindowChanged(bool showOrHide);
         void _terminalPlayMidiNote(const int noteNumber,

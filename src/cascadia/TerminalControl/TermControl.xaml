@@ -1256,8 +1256,13 @@
                 <ColumnDefinition Width="*" />
                 <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="*" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
 
             <Grid Grid.Column="0"
+                  Grid.Row="0"
                   Background="Transparent"
                   PointerExited="_PointerExitedHandler"
                   PointerMoved="_PointerMovedHandler"
@@ -1340,6 +1345,7 @@
 
             <ScrollBar x:Name="ScrollBar"
                        Grid.Column="1"
+                       Grid.Row="0"
                        HorizontalAlignment="Right"
                        VerticalAlignment="Stretch"
                        IndicatorMode="MouseIndicator"
@@ -1354,8 +1360,27 @@
                        ValueChanged="_ScrollbarChangeHandler"
                        ViewportSize="10" />
 
+            <ScrollBar x:Name="HorizontalScrollBar"
+                       Grid.Column="0"
+                       Grid.Row="1"
+                       HorizontalAlignment="Stretch"
+                       VerticalAlignment="Bottom"
+                       IndicatorMode="MouseIndicator"
+                       IsTabStop="False"
+                       LargeChange="4"
+                       Maximum="1"
+                       Orientation="Horizontal"
+                       PointerPressed="_CapturePointer"
+                       PointerReleased="_ReleasePointerCapture"
+                       SmallChange="1"
+                       Style="{StaticResource ForkedScrollbarTemplate}"
+                       ValueChanged="_HorizontalScrollbarChangeHandler"
+                       ViewportSize="10"
+                       Visibility="Collapsed" />
+
             <Image x:Name="ScrollBarCanvas"
                    Grid.Column="1"
+                   Grid.Row="0"
                    Width="{StaticResource ScrollBarSize}"
                    HorizontalAlignment="Right"
                    VerticalAlignment="Stretch"

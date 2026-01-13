@@ -246,6 +246,7 @@ void Terminal::SetReflowOnResize(bool value) noexcept
         _nonReflowMaxWidth = 0;
         _scrollOffsetX = 0;
     }
+    _NotifyScrollEventX();
 }
 
 void Terminal::_ClampScrollOffsetsUnderLock() noexcept
@@ -479,6 +480,7 @@ try
     _NotifyScrollEvent();
 
     _ClampScrollOffsetsUnderLock();
+    _NotifyScrollEventX();
 
     return S_OK;
 }
@@ -1175,9 +1177,9 @@ void Terminal::UserScrollViewportHorizontal(const int viewLeft)
     // Horizontal scroll changes what's visible, so invalidate patterns and redraw.
     _activeBuffer().TriggerRedrawAll();
 
-    // If you later create a horizontal scrollbar callback, notify here.
-    // For now, vertical scrollbar stays unchanged:
+    // Keep the vertical scrollbar behavior unchanged.
     _NotifyScrollEvent();
+    _NotifyScrollEventX();
 }
 
 void Terminal::UserScrollViewportHorizontalDelta(const int delta)
@@ -1241,6 +1243,31 @@ void Terminal::_NotifyScrollEvent()
     }
 }
 
+void Terminal::_NotifyScrollEventX()
+{
+    _clearPatternTree();
+
+    if (_pfnScrollPositionChangedX)
+    {
+        if (_inAltBuffer())
+        {
+            _pfnScrollPositionChangedX(0, 0, 0);
+            return;
+        }
+
+        if (!_mainBuffer)
+        {
+            return;
+        }
+
+        const auto visible = _GetVisibleViewport();
+        const auto left = visible.Left();
+        const auto width = visible.Width();
+        const auto bufferWidth = _activeBuffer().GetSize().Width();
+        _pfnScrollPositionChangedX(left, width, bufferWidth);
+    }
+}
+
 void Terminal::SetWriteInputCallback(std::function<void(std::wstring_view)> pfn) noexcept
 {
     _pfnWriteInput.swap(pfn);
@@ -1264,6 +1291,11 @@ void Terminal::SetCopyToClipboardCallback(std::function<void(wil::zwstring_view)
 void Terminal::SetScrollPositionChangedCallback(std::function<void(const int, const int, const int)> pfn) noexcept
 {
     _pfnScrollPositionChanged.swap(pfn);
+}
+
+void Terminal::SetScrollPositionChangedCallbackHorizontal(std::function<void(const int, const int, const int)> pfn) noexcept
+{
+    _pfnScrollPositionChangedX.swap(pfn);
 }
 
 // Method Description:

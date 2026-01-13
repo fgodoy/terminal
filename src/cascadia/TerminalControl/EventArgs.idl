@@ -95,6 +95,13 @@ namespace Microsoft.Terminal.Control
         Int32 BufferSize { get; };
     }
 
+    runtimeclass ScrollPositionChangedArgsHorizontal
+    {
+        Int32 ViewLeft { get; };
+        Int32 ViewWidth { get; };
+        Int32 BufferWidth { get; };
+    }
+
     runtimeclass RendererWarningArgs
     {
         HRESULT Result { get; };

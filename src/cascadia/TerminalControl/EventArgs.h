@@ -11,6 +11,7 @@
 #include "OpenHyperlinkEventArgs.g.h"
 #include "NoticeEventArgs.g.h"
 #include "ScrollPositionChangedArgs.g.h"
+#include "ScrollPositionChangedArgsHorizontal.g.h"
 #include "RendererWarningArgs.g.h"
 #include "TransparencyChangedEventArgs.g.h"
 #include "ShowWindowArgs.g.h"
@@ -143,6 +144,23 @@ namespace winrt::Microsoft::Terminal::Control::implementation
         WINRT_PROPERTY(int32_t, ViewTop);
         WINRT_PROPERTY(int32_t, ViewHeight);
         WINRT_PROPERTY(int32_t, BufferSize);
+    };
+
+    struct ScrollPositionChangedArgsHorizontal : public ScrollPositionChangedArgsHorizontalT<ScrollPositionChangedArgsHorizontal>
+    {
+    public:
+        ScrollPositionChangedArgsHorizontal(const int viewLeft,
+                                            const int viewWidth,
+                                            const int bufferWidth) :
+            _ViewLeft(viewLeft),
+            _ViewWidth(viewWidth),
+            _BufferWidth(bufferWidth)
+        {
+        }
+
+        WINRT_PROPERTY(int32_t, ViewLeft);
+        WINRT_PROPERTY(int32_t, ViewWidth);
+        WINRT_PROPERTY(int32_t, BufferWidth);
     };
 
     struct RendererWarningArgs : public RendererWarningArgsT<RendererWarningArgs>

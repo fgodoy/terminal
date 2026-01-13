@@ -272,6 +272,7 @@ namespace winrt::Microsoft::Terminal::Control::implementation
     TermControl::TermControl(Control::ControlInteractivity content) :
         _interactivity{ content },
         _isInternalScrollBarUpdate{ false },
+        _isInternalHorizontalScrollBarUpdate{ false },
         _autoScrollVelocity{ 0 },
         _autoScrollingPointerPoint{ std::nullopt },
         _lastAutoScrollUpdateTime{ std::nullopt },
@@ -384,6 +385,19 @@ namespace winrt::Microsoft::Terminal::Control::implementation
                 }
             });
 
+        _updateHorizontalScrollBar = std::make_shared<ThrottledFunc<ScrollBarUpdate>>(
+            dispatcher,
+            til::throttled_func_options{
+                .delay = ScrollBarUpdateInterval,
+                .trailing = true,
+            },
+            [weakThis = get_weak()](const auto& update) {
+                if (auto control{ weakThis.get() }; control && !control->_IsClosing())
+                {
+                    control->_throttledUpdateHorizontalScrollbar(update);
+                }
+            });
+
         // These events might all be triggered by the connection, but that
         // should be drained and closed before we complete destruction. So these
         // are safe.
@@ -392,6 +406,7 @@ namespace winrt::Microsoft::Terminal::Control::implementation
         // _updateScrollBar func. Otherwise, we could get a callback from an
         // attached content before we set up the throttled func, and that'll A/V
         _revokers.coreScrollPositionChanged = _core.ScrollPositionChanged(winrt::auto_revoke, { get_weak(), &TermControl::_ScrollPositionChanged });
+        _revokers.coreScrollPositionChangedHorizontal = _core.ScrollPositionChangedHorizontal(winrt::auto_revoke, { get_weak(), &TermControl::_ScrollPositionChangedHorizontal });
         _revokers.WarningBell = _core.WarningBell(winrt::auto_revoke, { get_weak(), &TermControl::_coreWarningBell });
 
         static constexpr auto AutoScrollUpdateInterval = std::chrono::microseconds(static_cast<int>(1.0 / 30.0 * 1000000));
@@ -661,6 +676,31 @@ namespace winrt::Microsoft::Terminal::Control::implementation
             source.Invalidate();
             canvas.Visibility(Visibility::Visible);
         }
+    }
+
+    void TermControl::_throttledUpdateHorizontalScrollbar(const ScrollBarUpdate& update)
+    {
+        if (!_initializedTerminal)
+        {
+            return;
+        }
+
+        _isInternalHorizontalScrollBarUpdate = true;
+
+        auto scrollBar = HorizontalScrollBar();
+        if (update.newValue)
+        {
+            scrollBar.Value(*update.newValue);
+        }
+        scrollBar.Maximum(update.newMaximum);
+        scrollBar.Minimum(update.newMinimum);
+        scrollBar.ViewportSize(update.newViewportSize);
+        scrollBar.LargeChange(std::max(update.newViewportSize - 1, 0.));
+
+        const auto shouldShow = !winrt::get_self<ControlCore>(_core)->ReflowOnResize() && update.newMaximum > 0;
+        scrollBar.Visibility(shouldShow ? Visibility::Visible : Visibility::Collapsed);
+
+        _isInternalHorizontalScrollBarUpdate = false;
     }
 
     // Method Description:
@@ -1772,6 +1812,46 @@ namespace winrt::Microsoft::Terminal::Control::implementation
             return true;
         }
 
+        if (keyDown &&
+            modifiers.IsShiftPressed() &&
+            !modifiers.IsCtrlPressed() &&
+            !modifiers.IsAltPressed() &&
+            !modifiers.IsWinPressed() &&
+            !winrt::get_self<ControlCore>(_core)->ReflowOnResize())
+        {
+            const auto scrollBar = HorizontalScrollBar();
+            const auto maxX = gsl::narrow_cast<int>(scrollBar.Maximum());
+            if (scrollBar.Visibility() == Visibility::Visible && maxX > 0)
+            {
+                const auto viewWidth = gsl::narrow_cast<int>(scrollBar.ViewportSize());
+                const auto page = std::max(viewWidth - 1, 1);
+                constexpr auto smallStep = 1;
+
+                const auto core = winrt::get_self<ControlCore>(_core);
+                switch (vkey)
+                {
+                case VK_LEFT:
+                    core->UserScrollViewportHorizontalDelta(-smallStep);
+                    return true;
+                case VK_RIGHT:
+                    core->UserScrollViewportHorizontalDelta(smallStep);
+                    return true;
+                case VK_PRIOR:
+                    core->UserScrollViewportHorizontalDelta(-page);
+                    return true;
+                case VK_NEXT:
+                    core->UserScrollViewportHorizontalDelta(page);
+                    return true;
+                case VK_HOME:
+                    core->UserScrollViewportHorizontal(0);
+                    return true;
+                case VK_END:
+                    core->UserScrollViewportHorizontal(maxX);
+                    return true;
+                }
+            }
+        }
+
         if (_TrySendKeyEvent(vkey, scanCode, modifiers, keyDown))
         {
             return true;
@@ -2202,6 +2282,23 @@ namespace winrt::Microsoft::Terminal::Control::implementation
         });
     }
 
+    void TermControl::_HorizontalScrollbarChangeHandler(const Windows::Foundation::IInspectable& /*sender*/,
+                                                        const Controls::Primitives::RangeBaseValueChangedEventArgs& args)
+    {
+        if (_isInternalHorizontalScrollBarUpdate || _IsClosing())
+        {
+            return;
+        }
+
+        const auto newValue = args.NewValue();
+        const auto viewLeft = gsl::narrow_cast<int>(std::lround(newValue));
+        winrt::get_self<ControlCore>(_core)->UserScrollViewportHorizontal(viewLeft);
+
+        _updateHorizontalScrollBar->ModifyPending([](auto& update) {
+            update.newValue.reset();
+        });
+    }
+
     // Method Description:
     // - captures the pointer so that none of the other XAML elements respond to pointer events
     // Arguments:
@@ -2491,6 +2588,19 @@ namespace winrt::Microsoft::Terminal::Control::implementation
         }
 
         RefreshQuickFixMenu();
+    }
+
+    void TermControl::_ScrollPositionChangedHorizontal(const IInspectable& /*sender*/,
+                                                       const Control::ScrollPositionChangedArgsHorizontal& args)
+    {
+        ScrollBarUpdate update;
+        const auto hiddenContent = std::max(0, args.BufferWidth() - args.ViewWidth());
+        update.newMaximum = hiddenContent;
+        update.newMinimum = 0;
+        update.newViewportSize = args.ViewWidth();
+        update.newValue = args.ViewLeft();
+
+        _updateHorizontalScrollBar->Run(update);
     }
 
     hstring TermControl::Title()
@@ -2855,6 +2965,10 @@ namespace winrt::Microsoft::Terminal::Control::implementation
             {
                 width += static_cast<float>(ScrollBar().ActualWidth());
             }
+            if (HorizontalScrollBar().Visibility() == Visibility::Visible)
+            {
+                height += static_cast<float>(HorizontalScrollBar().ActualHeight());
+            }
 
             // Account for the size of any padding
             const auto padding = GetPadding();
@@ -2892,6 +3006,10 @@ namespace winrt::Microsoft::Terminal::Control::implementation
         if (widthOrHeight && _core.Settings().ScrollState() != ScrollbarState::Hidden)
         {
             nonTerminalArea += gsl::narrow_cast<float>(ScrollBar().ActualWidth());
+        }
+        if (!widthOrHeight && HorizontalScrollBar().Visibility() == Visibility::Visible)
+        {
+            nonTerminalArea += gsl::narrow_cast<float>(HorizontalScrollBar().ActualHeight());
         }
 
         const auto gridSize = dimension - nonTerminalArea;

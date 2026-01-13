@@ -11,6 +11,7 @@
 #include "OpenHyperlinkEventArgs.g.cpp"
 #include "NoticeEventArgs.g.cpp"
 #include "ScrollPositionChangedArgs.g.cpp"
+#include "ScrollPositionChangedArgsHorizontal.g.cpp"
 #include "RendererWarningArgs.g.cpp"
 #include "TransparencyChangedEventArgs.g.cpp"
 #include "ShowWindowArgs.g.cpp"
