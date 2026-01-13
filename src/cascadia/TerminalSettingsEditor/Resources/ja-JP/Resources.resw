@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <root>
   <!-- 
     Microsoft ResX Schema 
@@ -283,6 +283,10 @@
   <data name="Globals_CopyOnSelect.Header" xml:space="preserve">
     <value>選択範囲をクリップボードに自動でコピーする</value>
     <comment>Header for a control to toggle whether selected text should be copied to the clipboard automatically, or not.</comment>
+  </data>
+  <data name="Globals_ReflowOnResize.Header" xml:space="preserve">
+    <value>ターミナルのサイズ変更時に行を再折り返しする</value>
+    <comment>Reflow lines when resizing the terminal. If false, resizing will not rewrap content.</comment>
   </data>
   <data name="Globals_DetectURLs.Header" xml:space="preserve">
     <value>URL を自動的に検出して、クリックできるようにする</value>

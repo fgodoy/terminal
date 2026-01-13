@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <root>
   <!-- 
     Microsoft ResX Schema 
@@ -283,6 +283,10 @@
   <data name="Globals_CopyOnSelect.Header" xml:space="preserve">
     <value>Copier automatiquement la sélection dans le Presse-papiers</value>
     <comment>Header for a control to toggle whether selected text should be copied to the clipboard automatically, or not.</comment>
+  </data>
+  <data name="Globals_ReflowOnResize.Header" xml:space="preserve">
+    <value>Recomposer les lignes lors du redimensionnement du terminal</value>
+    <comment>Reflow lines when resizing the terminal. If false, resizing will not rewrap content.</comment>
   </data>
   <data name="Globals_DetectURLs.Header" xml:space="preserve">
     <value>Détecter automatiquement les URL et les rendre cliquables</value>
