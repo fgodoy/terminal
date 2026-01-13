@@ -290,6 +290,10 @@
     <value>Автоматично копіювати виділення в буфер обміну</value>
     <comment>Header for a control to toggle whether selected text should be copied to the clipboard automatically, or not.</comment>
   </data>
+  <data name="Globals_ReflowOnResize.Header" xml:space="preserve">
+    <value>Переформатовувати рядки під час зміни розміру термінала</value>
+    <comment>Reflow lines when resizing the terminal. If false, resizing will not rewrap content.</comment>
+  </data>
   <data name="Globals_DetectURLs.Header" xml:space="preserve">
     <value>Автоматично виявляти URL-адреси та робити їх доступними для натискання</value>
     <comment>Header for a control to toggle whether the terminal should automatically detect URLs and make them clickable, or not.</comment>

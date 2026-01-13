@@ -290,6 +290,10 @@
     <value>Аутоматски копирај избор у системску оставу</value>
     <comment>Header for a control to toggle whether selected text should be copied to the clipboard automatically, or not.</comment>
   </data>
+  <data name="Globals_ReflowOnResize.Header" xml:space="preserve">
+    <value>Преламати редове при промени величине терминала</value>
+    <comment>Reflow lines when resizing the terminal. If false, resizing will not rewrap content.</comment>
+  </data>
   <data name="Globals_DetectURLs.Header" xml:space="preserve">
     <value>Аутоматски детектуј URL адресе и омогући клик на њих</value>
     <comment>Header for a control to toggle whether the terminal should automatically detect URLs and make them clickable, or not.</comment>

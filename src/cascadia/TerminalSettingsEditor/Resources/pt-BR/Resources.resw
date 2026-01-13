@@ -290,6 +290,10 @@
     <value>Copiar a seleção automaticamente para a área de transferência</value>
     <comment>Header for a control to toggle whether selected text should be copied to the clipboard automatically, or not.</comment>
   </data>
+  <data name="Globals_ReflowOnResize.Header" xml:space="preserve">
+    <value>Refluxo de linhas ao redimensionar o terminal</value>
+    <comment>Reflow lines when resizing the terminal. If false, resizing will not rewrap content.</comment>
+  </data>
   <data name="Globals_DetectURLs.Header" xml:space="preserve">
     <value>Detectar automaticamente URLs e os tornar clicáveis</value>
     <comment>Header for a control to toggle whether the terminal should automatically detect URLs and make them clickable, or not.</comment>

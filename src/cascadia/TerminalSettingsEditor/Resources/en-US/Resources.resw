@@ -288,7 +288,7 @@
     <value>Reflow lines when resizing the terminal</value>
     <comment>Reflow lines when resizing the terminal. If false, resizing will not rewrap content.</comment>
   </data>
-	<data name="Globals_DetectURLs.Header" xml:space="preserve">
+  <data name="Globals_DetectURLs.Header" xml:space="preserve">
     <value>Automatically detect URLs and make them clickable</value>
     <comment>Header for a control to toggle whether the terminal should automatically detect URLs and make them clickable, or not.</comment>
   </data>
